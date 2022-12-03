@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [aoc2022.day1 :refer :all]))
 
-(deftest a-test
+(deftest test-count-calories
   (testing "count-calories works on test input"
     (let [input ["1000"
                  "2000"
