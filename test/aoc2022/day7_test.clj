@@ -12,22 +12,21 @@
 
 (deftest test-apply-op
   (testing "applying ops"
-    (is (= [{} []] (apply-op [{} []]
-                             [:ls nil])))  ; ls is a no-op
-    (is (= [{} []] (apply-op [{} ["nonexistent"]]
-                             [:cd "/"])))
-    (is (= [{} []] (apply-op [{} ["a"]]
-                             [:cd ".."])))
-    (is (= [{} ["a"]] (apply-op [{} ["a" "b"]]
-                                [:cd ".."])))
-    (is (= [{} ["a" "b"]] (apply-op [{} ["a"]]
-                                    [:cd "b"])))
-    (is (= [{["a"] #{}} []] (apply-op [{} []]
-                                      [:dir "a"])))
-    (is (= [{["a"] #{["f" 29116]}} ["a"]] (apply-op [{["a"] #{}} ["a"]]
-                                                    [:file ["f" 29116]])))
-    (is (= [{[] #{["f" 29116]}} []] (apply-op (new-state)
-                                              [:file ["f" 29116]])))))
+    (is (= (new-state) (apply-op (new-state) [:ls nil])))  ; ls is a no-op
+    (is (= (new-state) (apply-op (merge (new-state) {:cwd ["nonexistent"]})
+                                 [:cd "/"])))
+    (is (= (new-state) (apply-op (merge (new-state) {:cwd ["a"]})
+                                 [:cd ".."])))
+    (is (= (merge (new-state) {:cwd ["a"]}) (apply-op (merge (new-state) {:cwd ["a" "b"]})
+                                                      [:cd ".."])))
+    (is (= (merge (new-state) {:cwd ["a" "b"]}) (apply-op (merge (new-state) {:cwd ["a"]})
+                                                          [:cd "b"])))
+    (is (= (merge (new-state) {:paths {[] #{} ["a"] #{}}}) (apply-op (new-state)
+                                                                     [:dir "a"])))
+    (is (= (merge (new-state) {:paths {[] #{} ["a"] #{["f" 29116]}} :cwd ["a"]}) (apply-op {:paths {[] #{} ["a"] #{}} :cwd ["a"]}
+                                                                                           [:file ["f" 29116]])))
+    (is (= (merge (new-state) {:paths {[] #{["f" 29116]}}}) (apply-op (new-state)
+                                                                      [:file ["f" 29116]])))))
 
 (deftest test-walk-to-root
   (testing "walk-to-root returns this path and parent paths"
@@ -46,11 +45,13 @@
 (deftest test-total-sizes
   (testing "total-sizes sums entire path set correctly"
     (is (= {[] 10}
-           (total-sizes {[] #{["file0" 3] ["file1" 7]}})))
+           (total-sizes {:paths {[] #{["file0" 3] ["file1" 7]}} :cwd []})))
     (is (= {[] 22 ["a"] 12}
-           (total-sizes {[] #{["file0" 3] ["file1" 7]}
-                         ["a"] #{["file2" 4] ["file3" 8]}})))
+           (total-sizes {:paths {[] #{["file0" 3] ["file1" 7]}
+                                 ["a"] #{["file2" 4] ["file3" 8]}}
+                         :cwd []})))
     (is (= {[] 30 ["a"] 20 ["a" "b"] 8}
-           (total-sizes {[] #{["file0" 3] ["file1" 7]}
-                         ["a"] #{["file2" 4] ["file3" 8]}
-                         ["a" "b"] #{["file4" 8]}})))))
+           (total-sizes {:paths {[] #{["file0" 3] ["file1" 7]}
+                                 ["a"] #{["file2" 4] ["file3" 8]}
+                                 ["a" "b"] #{["file4" 8]}}
+                         :cwd []})))))

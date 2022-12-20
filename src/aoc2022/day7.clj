@@ -4,13 +4,12 @@
             [clojure.pprint :as pp]))
 
 (defn new-state
-  "Get initialized empty filesystem state
-   This is a pair [paths cwd] where paths is a map of {path files};
-   Each path (including cwd) is a list of string path components;
-   For each path, files are a set of [name size] pairs;
-   cwd is the current working directory."
+  "Get initialized empty filesystem state"
   []
-  [{[] #{}} []])
+  ; Each path (including cwd) is a list of string path components
+  ; For each path, files are a set of [name size] pairs
+  {:paths {[] #{}}
+   :cwd []})
 
 (defn parse-op
   "Given a single-line operation or output, return a pair [operation argument]
@@ -26,20 +25,20 @@
 
 (defn apply-op
   "Given an op and a filesystem state, return a new state with the op applied"
-  [[paths cwd] [op arg]]
+  [{paths :paths cwd :cwd :as state} [op arg]]
   (case op
-    :ls [paths cwd] ; ls is a no-op
+    :ls state ; ls is a no-op
     :cd (case arg
-          "/" [paths []]
-          ".." [paths (pop cwd)]
-          [paths (conj cwd arg)])
+          "/" {:paths paths :cwd []}
+          ".." {:paths paths :cwd (pop cwd)}
+          {:paths paths :cwd (conj cwd arg)})
     :dir (let [path (conj cwd arg)]
            (if (paths path)
-             [paths cwd] ; no-op if we see a dir more than once
-             [(assoc paths path #{}) cwd]))
+             state ; no-op if we see a dir more than once
+             {:paths (assoc paths path #{}) :cwd cwd}))
     :file (let [[filename size] arg
                 contents (paths cwd)]
-            [(assoc paths cwd (conj contents arg)) cwd])))
+            {:paths (assoc paths cwd (conj contents arg)) :cwd cwd})))
 
 (defn walk-to-root
   "Given a path represented as a list, return this plus all parent paths as we walk up to the root"
@@ -57,11 +56,11 @@
 
 (defn total-sizes
   "Given a filesystem state, return a map of paths to total sizes"
-  [state]
+  [{paths :paths}]
   (reduce-kv (fn [acc path files]
                (merge-with + acc (path-sizes path files)))
              {}
-             state))
+             paths))
 
 (defn main
   "Day 7 of Advent of Code 2022: No Space Left On Device
@@ -69,8 +68,8 @@
    where <input> is a filename in resources/"
   [[filename]]
   (let [ops (map parse-op (util/read-lines filename))
-        [paths _] (reduce apply-op (new-state) ops)
-        sizes (total-sizes paths)
+        state (reduce apply-op (new-state) ops)
+        sizes (total-sizes state)
         part1-targets (filter (fn [[path size]] (<= size 100000)) sizes)
         part1-sum (reduce-kv (fn [acc path size] (+ acc size)) 0 part1-targets)
         unused-space (- 70000000 (sizes []))
